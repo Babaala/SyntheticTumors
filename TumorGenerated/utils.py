@@ -77,12 +77,15 @@ def get_predefined_texture(mask_shape, sigma_a, sigma_b):
 def random_select(mask_scan):
     # we first find z index and then sample point with z slice
     z_start, z_end = np.where(np.any(mask_scan, axis=(0, 1)))[0][[0, -1]]
+    
 
     # we need to strict number z's position (0.3 - 0.7 in the middle of liver)
     z = round(random.uniform(0.3, 0.7) * (z_end - z_start)) + z_start
 
     liver_mask = mask_scan[..., z]
-
+    print("liver_mask.shape",liver_mask.shape)
+    print("z",z)
+    
     # erode the mask (we don't want the edge points)
     kernel = np.ones((5,5), dtype=np.uint8)
     liver_mask = cv2.erode(liver_mask, kernel, iterations=1)
@@ -343,14 +346,24 @@ def SynthesisTumor(volume_scan, mask_scan, tumor_type, texture):
     x_start, x_end = np.where(np.any(mask_scan, axis=(1, 2)))[0][[0, -1]]
     y_start, y_end = np.where(np.any(mask_scan, axis=(0, 2)))[0][[0, -1]]
     z_start, z_end = np.where(np.any(mask_scan, axis=(0, 1)))[0][[0, -1]]
+    print("x_start, x_end", x_start, x_end)
+    print("y_start, y_end", y_start, y_end)
+    print("z_start, z_end", z_start, z_end)
 
     # shrink the boundary
     x_start, x_end = max(0, x_start+1), min(mask_scan.shape[0], x_end-1)
     y_start, y_end = max(0, y_start+1), min(mask_scan.shape[1], y_end-1)
     z_start, z_end = max(0, z_start+1), min(mask_scan.shape[2], z_end-1)
 
-    liver_volume = volume_scan[x_start:x_end, y_start:y_end, z_start:z_end]
-    liver_mask   = mask_scan[x_start:x_end, y_start:y_end, z_start:z_end]
+    # liver_volume = volume_scan[x_start:x_end, y_start:y_end, z_start:z_end]
+    # liver_mask   = mask_scan[x_start:x_end, y_start:y_end, z_start:z_end]
+    liver_volume = volume_scan[:, y_start:y_end, z_start:z_end]
+    liver_mask   = mask_scan[:, y_start:y_end, z_start:z_end]
+    print("liver_volume shape: ", liver_volume.shape)
+    print("liver_mask shape: ", liver_mask.shape)
+    print("x_start, x_end", x_start, x_end)
+    print("y_start, y_end", y_start, y_end)
+    print("z_start, z_end", z_start, z_end)
 
     # input texture shape: 420, 300, 320
     # we need to cut it into the shape of liver_mask
@@ -359,8 +372,10 @@ def SynthesisTumor(volume_scan, mask_scan, tumor_type, texture):
     start_x = random.randint(0, texture.shape[0] - x_length - 1) # random select the start point, -1 is to avoid boundary check
     start_y = random.randint(0, texture.shape[1] - y_length - 1) 
     start_z = random.randint(0, texture.shape[2] - z_length - 1) 
-    cut_texture = texture[start_x:start_x+x_length, start_y:start_y+y_length, start_z:start_z+z_length]
-
+    
+    # cut_texture = texture[start_x:start_x+x_length, start_y:start_y+y_length, start_z:start_z+z_length]
+    cut_texture = texture[:, start_y:start_y+y_length, start_z:start_z+z_length]
+    print("cut_texture shape: ", cut_texture.shape)
 
     liver_volume, liver_mask = get_tumor(liver_volume, liver_mask, tumor_type, cut_texture)
     volume_scan[x_start:x_end, y_start:y_end, z_start:z_end] = liver_volume

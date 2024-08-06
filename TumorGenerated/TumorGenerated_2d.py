@@ -5,8 +5,7 @@ from monai.config import KeysCollection
 from monai.config.type_definitions import NdarrayOrTensor
 from monai.transforms.transform import MapTransform, RandomizableTransform
 
-# from .utils import SynthesisTumor, get_predefined_texture
-from utils import SynthesisTumor, get_predefined_texture
+from utils_2d import SynthesisTumor, get_predefined_texture
 import numpy as np
 
 from matplotlib import pyplot as plt
@@ -27,21 +26,17 @@ class TumorGenerated(RandomizableTransform, MapTransform):
         
         assert len(tumor_prob) == 5
         self.tumor_prob = np.array(tumor_prob)
-        # texture shape: 420, 300, 320
-        # self.textures = pre_define 10 texture
+        
+        # Texture shape for 2D: (300, 320)
         self.textures = []
         sigma_as = [3, 6, 9, 12, 15]
         sigma_bs = [4, 7]
-        # predefined_texture_shape = (420, 300, 320)
-        predefined_texture_shape = (1, 300, 320)
+        predefined_texture_shape = (300, 320)
         for sigma_a in sigma_as:
             for sigma_b in sigma_bs:
                 texture = get_predefined_texture(predefined_texture_shape, sigma_a, sigma_b)
-                # plt.imshow(texture[0])
-                # plt.show()
                 self.textures.append(texture)
         print("All predefined texture have generated.")
-
 
     def __call__(self, data: Mapping[Hashable, NdarrayOrTensor]) -> Dict[Hashable, NdarrayOrTensor]:
         d = dict(data)
@@ -50,6 +45,5 @@ class TumorGenerated(RandomizableTransform, MapTransform):
         if self._do_transform and (np.max(d['label']) <= 1):  
             tumor_type = np.random.choice(self.tumor_types, p=self.tumor_prob.ravel())
             texture = random.choice(self.textures)
-            d['image'][0], d['label'][0] = SynthesisTumor(d['image'][0], d['label'][0], tumor_type, texture)
-            # print(tumor_type, d['image'].shape, np.max(d['label']))
+            d['image'], d['label'] = SynthesisTumor(d['image'], d['label'], tumor_type, texture)
         return d
